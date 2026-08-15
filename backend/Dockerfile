@@ -7,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
-# Cloud Run injects $PORT (defaults to 8080); uvicorn must bind to it.
+# Render (and Cloud Run) inject $PORT; uvicorn must bind to it.
 ENV PORT=8080
 CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}

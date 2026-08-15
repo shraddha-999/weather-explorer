@@ -6,7 +6,9 @@ load_dotenv()
 
 
 class Settings:
-    gcs_bucket_name: str = os.environ["GCS_BUCKET_NAME"]
+    supabase_url: str = os.environ["SUPABASE_URL"]
+    supabase_key: str = os.environ["SUPABASE_KEY"]
+    supabase_bucket_name: str = os.environ.get("SUPABASE_BUCKET_NAME", "weather-data")
     allowed_origins: list[str] = [
         origin.strip()
         for origin in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
