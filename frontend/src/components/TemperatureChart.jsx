@@ -3,9 +3,19 @@ const HEIGHT = 260;
 const PAD = { top: 16, right: 16, bottom: 28, left: 40 };
 
 function buildPath(values, xFor, yFor) {
-  return values
-    .map((v, i) => `${i === 0 ? "M" : "L"} ${xFor(i)} ${yFor(v)}`)
-    .join(" ");
+  // Break the line at null entries (e.g. Open-Meteo hasn't finalized the most
+  // recent day yet) instead of drawing through a NaN coordinate.
+  let d = "";
+  let penDown = false;
+  values.forEach((v, i) => {
+    if (v === null) {
+      penDown = false;
+      return;
+    }
+    d += `${penDown ? "L" : "M"} ${xFor(i)} ${yFor(v)} `;
+    penDown = true;
+  });
+  return d.trim();
 }
 
 export default function TemperatureChart({ rows, unit }) {
@@ -20,6 +30,15 @@ export default function TemperatureChart({ rows, unit }) {
   const maxes = rows.map((r) => r.tempMax).filter((v) => v !== null);
   const mins = rows.map((r) => r.tempMin).filter((v) => v !== null);
   const allValues = [...maxes, ...mins];
+
+  if (allValues.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-ink/10 p-6 text-sm text-ink/50 text-center">
+        No temperature data available for this range.
+      </div>
+    );
+  }
+
   const dataMin = Math.min(...allValues);
   const dataMax = Math.max(...allValues);
   const yPad = (dataMax - dataMin) * 0.1 || 1;
