@@ -5,6 +5,18 @@ stores the raw response in a cloud bucket, and lets you browse and visualize wha
 
 Built for the InRisk Labs full-stack case study.
 
+## Live demo
+
+- **App:** https://weather-explorer-shraddha.netlify.app
+- **API:** https://weather-explorer-api.onrender.com
+- **Last verified live:** 2026-08-15 (full store → list → visualize flow tested against the deployed URLs above, not just locally)
+
+The API runs on Render's free tier, which spins down after ~15 min of inactivity — the first
+request after a while will be slow (10-30s cold start) while it wakes back up. If the app ever
+looks down, that's almost certainly what's happening; give it a moment and reload. To redeploy on
+demand: push to `main`, Render auto-deploys from GitHub (see "Render deploy" below for a from-scratch
+setup).
+
 ## Architecture
 
 ```
@@ -44,7 +56,7 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_KEY (the secret key), SUPABASE_BUCKET_NAME
-pytest                 # runs the validation test suite
+pytest                 # 25 tests: validation, routes, storage, and the Open-Meteo client
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -99,6 +111,21 @@ npm run dev
 3. Set `VITE_API_BASE_URL` to the deployed Render URL in Netlify's environment variables
 4. Once you have the Netlify URL, update the backend's `ALLOWED_ORIGINS` on Render and redeploy
 
+### Tests
+
+```bash
+npm test   # vitest, 11 tests: weatherData reshaping, TemperatureChart edge cases, App smoke test
+```
+
+## Libraries used
+
+**Backend:** FastAPI, Pydantic, `httpx` (Open-Meteo calls), `supabase` (Storage client), `uvicorn`,
+`pytest` (dev).
+
+**Frontend:** React 18, Vite, Tailwind CSS. No charting library (see below), no state/data-fetching
+library — `fetch` + component state is enough for three panels and three endpoints. Dev-only:
+`vitest`, `@testing-library/react` + `jest-dom` + `user-event`.
+
 ## Design decisions
 
 - **FastAPI over Flask** — Pydantic models give us the lat/lon/date validation from the spec almost
@@ -116,18 +143,24 @@ npm run dev
 
 ## Known limitations
 
-- `npm audit` flags a moderate advisory in `esbuild` (bundled with Vite 5) — it only affects the
-  local dev server accepting cross-origin requests, not the production build in `dist/`. Not fixed
-  yet since the fix is a Vite 5 → 8 major bump; flagging here rather than silently upgrading.
+- `npm audit` flags advisories in `esbuild` (bundled with Vite 5, and pulled in again transitively
+  by `vitest`) — it only affects the local dev server accepting cross-origin requests, not the
+  production build in `dist/`, and not anything shipped to users. Not fixed yet since the fix is a
+  Vite 5 → 8 major bump; flagging here rather than silently upgrading.
 - Render's free tier spins down after inactivity, so the first request after a while will be slow
-  (cold start) — acceptable for a case study, would need a paid tier to avoid in production.
+  (cold start) — see "Live demo" above.
+- `TemperatureChart` shows a "no data available" message when every value in range is null (Open-Meteo
+  can return null for very recent, not-yet-finalized dates); it does not attempt to interpolate or
+  otherwise fill the gap.
 
 ## Status
 
-- [x] Backend implemented, tests passing (`pytest` — 11/11)
-- [x] Frontend implemented, builds and dev-serves cleanly
-- [x] Supabase project + private `weather-data` bucket created, backend verified end-to-end
-      locally (store → list → fetch, including 404 handling) against the real bucket
-- [ ] Deployed to Render (needs repo pushed to GitHub first)
-- [ ] Deployed to Netlify (needs Netlify login)
-- [ ] Pushed to GitHub (needs `gh` auth as shraddha-999)
+- [x] Backend implemented — 25 tests passing (`pytest`): request validation, route behavior (mocked
+      storage), the Supabase storage wrapper (mocked client), and the Open-Meteo client (mocked httpx)
+- [x] Frontend implemented — 11 tests passing (`npm test`): data reshaping, chart edge cases, and an
+      App-level store → list → visualize smoke test
+- [x] Backend deployed to Render, verified live (health check, store/list/fetch, 404s, validation
+      errors all confirmed against the deployed URL)
+- [x] Frontend deployed to Netlify, verified live (CORS, correct API URL baked into the build,
+      manual click-through of the full flow)
+- [x] Pushed to a public GitHub repo
