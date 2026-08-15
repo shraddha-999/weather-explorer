@@ -29,13 +29,18 @@ class WeatherStorage:
         )
 
     def list_files(self) -> list[dict]:
+        # storage3's list() defaults to limit=100 sorted by name - override both,
+        # since filenames don't sort chronologically and the bucket can exceed 100 objects.
+        objects = self._bucket().list(
+            options={"limit": 1000, "sortBy": {"column": "created_at", "order": "desc"}}
+        )
         return [
             {
                 "name": obj["name"],
                 "size": (obj.get("metadata") or {}).get("size", 0),
                 "created_at": obj.get("created_at"),
             }
-            for obj in self._bucket().list()
+            for obj in objects
         ]
 
     def get_json(self, name: str) -> dict | None:
